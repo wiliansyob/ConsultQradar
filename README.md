@@ -14,7 +14,6 @@ ConsultQradar es una herramienta de línea de comandos y aplicación web en Pyth
 - Dependencias listadas en `requirements.txt`
 
 ## Requisitos previos
-
 - Python 3.7+ instalado
 - Acceso a una instancia de IBM QRadar y credenciales válidas
 - Git
