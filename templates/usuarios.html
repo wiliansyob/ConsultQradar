@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Usuarios disponibles</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{{ url_for('gestion') }}"><h1>Gestión de Ofensas QRadar</h1></a>
+            <div class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('logout') }}" class="nav-link btn btn-outline-danger">Cerrar sesión</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link btn btn-outline-primary">Iniciar sesión</a>
+                {% endif %}
+            </div>
+        </nav>
+        <!-- Regresar botón -->
+        <a href="{{ url_for('gestion') }}" class="text-primary">Regresar</a>
+        <br> <br>
+        <div class="col-md-9">
+            <div id="userListContainer">
+            <strong>Usuarios Disponibles para asiganar Ofensas</strong>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">ID </th>
+                        <th scope="col"> Descripción </th>
+                        <th scope="col"> Nombre de Usuario</th>
+                    </tr>
+                </thead>
+                <tbody id="userList">
+                </tbody>
+            </table>
+        </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const userList = document.getElementById('userList');
+            
+            function loadUsuarios() {
+                fetch('/api/get_usuarios')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && Array.isArray(data)) {
+                            userList.innerHTML = ''; 
+                            data.forEach((user) => {
+                                const row = document.createElement('tr');
+                                const userIdCell = document.createElement('td');
+                                userIdCell.textContent = user.user_id;
+                                row.appendChild(userIdCell);
+
+                                const descriptionCell = document.createElement('td');
+                                descriptionCell.textContent = user.description;
+                                row.appendChild(descriptionCell);
+
+                                const usernameCell = document.createElement('td');
+                                usernameCell.textContent = user.username;
+                                row.appendChild(usernameCell);
+
+                                userList.appendChild(row);
+                            });
+                        } else {
+                            userList.innerHTML = '<tr><td colspan="3">No se encontraron usuarios disponibles.</td></tr>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar los usuarios:', error);
+                        userList.innerHTML = '<li>No se pudieron cargar los usuarios.</li>';
+                    });
+            }
+
+            loadUsuarios();
+        });
+    </script>
+</body>
+</html>

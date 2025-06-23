@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestión de Ofensas QRadar</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{{ url_for('gestion') }}"><h1>Gestión de Ofensas QRadar</h1></a>
+            <div class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('logout') }}" class="nav-link btn btn-outline-danger">Cerrar sesión</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link btn btn-outline-primary">Iniciar sesión</a>
+                {% endif %}
+            </div>
+        </nav>
+        
+        <!-- Barra de botones para seleccionar acción -->
+        <nav class="navbar-expand-lg navbar-light">
+            <div class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <button class="btn btn-danger" id="btnCerrarOfensas">Cerrar Ofensas</button>
+                    <button class="btn btn-warning" id="btnOcultarOfensas">Ocultar Ofensas</button>
+                    <button class="btn btn-info" id="btnAgregarNotas">Agregar Notas</button>
+                    <button class="btn btn-success" id="btnAsignar">Asignar Ofensas</button>
+                    <button class="btn btn-secondary" onclick="window.location.href = '/ofensas';"> Ver eventos </button>
+                {% endif %}
+            </div>
+        </nav>
+        <br>
+        <!-- Formulario de Gestión de Ofensas -->
+        <form id="formGestionOfensas">
+            <div class="form-group">
+                <label for="offenseIds">IDs de Ofensas (*):</label>
+                <textarea id="offenseIds" class="form-control" rows="6" placeholder="Ejemplo:
+200788
+200626
+..
+.
+">
+            </textarea>
+            </div>
+            
+                <div class="row">
+                    <div class="col-md-4 col-12 pr-1">
+                        <div class="form-group" id="asignarGroup" style="display: none;">
+                            <label for="userId">Seleccionar Usuario:</label>
+                            <select id="userId" class="form-control">
+                                <option value="" disabled selected>Seleccione un usuario</option>
+                                <option value="admin">admin, "Admin"</option>
+                                <option value="wcancha">wcancha, "Wilians C."</option>
+                                <option value="agarlag">agarlag, "Alfredo G."</option>            
+                            </select>
+                            <a href="{{ url_for('usuarios') }}" ><small>Agregar usuarios</small></a>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-12 pl-1">
+
+                        <div class="form-group" id="reasonGroup" style="display: none;">
+                            <label for="closingReason">Razón de Cierre (*):</label>
+                            <select id="closingReason" class="form-control">
+                                <option value="" disabled selected>Seleccione una razón</option>
+                            </select>
+                            <a href="{{ url_for('razon_cierre') }}" ><small>Agregar Razón</small></a>
+                        </div>
+                    </div>
+                </div>
+            
+            <div class="form-group">
+                <label for="note">Nota:</label>
+                <textarea id="note" class="form-control" rows="3" placeholder="Nota para las ofensas..."></textarea>
+            </div>
+            <small>(*) Campos Obligatorios</small>
+            <div class="row">
+                <div class="col-md-3 col-12 pr-1">
+                    <button type="button" id="closeButton" class="btn btn-primary" style="display: none;">Cerrar Ofensas</button>
+                    <button type="button" id="hideButton" class="btn btn-primary" style="display: none;">Ocultar Ofensas</button>
+                    <button type="button" id="addNoteButton" class="btn btn-primary" style="display: none;">Agregar Notas</button>
+                    <button type="button" id="assignButton" class="btn btn-primary" style="display: none;">Asignar Ofensas</button>
+
+
+                    <div id="loading" class="mt-3">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cargando...
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-12 pl-1">
+                    <button type="button" class="btn btn-success" id="actualizarEventosBtn" onclick="location.reload();">Limpiar</button>
+                </div>
+            </div>
+
+
+        </form>
+        <br>
+       
+    </div>
+
+    
+
+    <!-- Modal -->
+    <div id="popupModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModalBtn">&times;</span>
+            <br><br>
+            <h5 id="popupModalLabel"></h5>
+            <div id="popupMessage">    </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" id="closeModalBtnFooter">Cerrar</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal de confirmación -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeConfirmationModalBtn">&times;</span>
+            <h5 id="confirmationModalLabel">Confirmación</h5>
+            <p id="confirmationMessage"></p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="confirmActionBtn">Confirmar</button>
+                <button type="button" class="btn btn-secondary" id="cancelActionBtn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function showConfirmationModal(message, action) {
+        const confirmationMessage = document.getElementById('confirmationMessage');
+        confirmationMessage.textContent = message;
+
+        const modal = document.getElementById('confirmationModal');
+        modal.style.display = "block";
+
+        setTimeout(() => {
+            modal.classList.add("show");
+        }, 10);
+
+        document.getElementById('confirmActionBtn').onclick = function() {
+            action();  
+            closeConfirmationModal();  
+        };
+
+        document.getElementById('cancelActionBtn').onclick = closeConfirmationModal;
+    }
+
+    function closeConfirmationModal() {
+        const modal = document.getElementById('confirmationModal');
+        modal.classList.remove("show");
+        setTimeout(() => {
+            modal.style.display = "none";
+        }, 500); 
+    }
+    </script>
+    
+
+
+
+    <script>
+    function showPopup(message) {
+        const popup = document.getElementById('popupMessage');
+        popup.innerHTML = message; 
+
+        const modal = document.getElementById('popupModal');
+        modal.style.display = "block"; 
+
+        setTimeout(() => {
+            modal.classList.add("show");
+        }, 10);
+    }
+
+    const closeModalBtns = document.querySelectorAll('#closeModalBtn, #closeModalBtnFooter');
+
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', function () {
+            const modal = document.getElementById('popupModal');
+            modal.classList.remove("show"); 
+
+            setTimeout(() => {
+                modal.style.display = "none"; 
+            }, 500);
+        });
+    });
+
+    window.onclick = function (event) {
+        const modal = document.getElementById('popupModal');
+        if (event.target === modal) {
+            modal.classList.remove("show"); 
+            setTimeout(() => {
+                modal.style.display = "none"; 
+            }, 1000);
+        }
+    };
+
+
+    </script>
+
+
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const offenseIdsInput = document.getElementById('offenseIds');
+            const closingReasonSelect = document.getElementById('closingReason');
+            const noteInput = document.getElementById('note');
+            const closeButton = document.getElementById('closeButton');
+            const hideButton = document.getElementById('hideButton');
+            
+            const assignButton = document.getElementById('assignButton');
+
+            const addNoteButton = document.getElementById('addNoteButton');
+            const loadingIndicator = document.getElementById('loading');
+            const reasonGroup = document.getElementById('reasonGroup');
+            const asignarGroup = document.getElementById('asignarGroup');
+
+            function resetForm(tipo) {
+                offenseIdsInput.value = '';
+                noteInput.value = '';
+                reasonGroup.style.display = 'none';
+                closeButton.style.display = 'none';
+                hideButton.style.display = 'none';
+
+                assignButton.style.display = 'none';
+                
+                addNoteButton.style.display = 'none';
+                asignarGroup.style.display = 'none';
+
+                if (tipo === 'cerrar') {
+                    reasonGroup.style.display = 'block';
+                    asignarGroup.style.display = 'block';
+                    closeButton.style.display = 'block';
+                } else if (tipo === 'ocultar') {
+                    hideButton.style.display = 'block';
+                } else if (tipo === 'nota') {
+                    addNoteButton.style.display = 'block';
+                } else if (tipo === 'asignar') {
+                    asignarGroup.style.display = 'block';
+                    assignButton.style.display = 'block';
+                }
+            }
+
+            document.getElementById('btnCerrarOfensas').addEventListener('click', function () {
+                resetForm('cerrar');
+            });
+
+            document.getElementById('btnOcultarOfensas').addEventListener('click', function () {
+                resetForm('ocultar');
+            });
+
+            document.getElementById('btnAgregarNotas').addEventListener('click', function () {
+                resetForm('nota');
+            });
+
+            document.getElementById('btnAsignar').addEventListener('click', function () {
+                resetForm('asignar');
+            });
+
+
+            // CIERRE DE OFENSAS
+            closeButton.addEventListener('click', function () {
+                const offenseIds = offenseIdsInput.value.split('\n').map(id => id.trim()).filter(id => id);
+                const reasonId = closingReasonSelect.value;
+                const note = noteInput.value;
+                const userId = document.getElementById('userId').value;  // Obtener el valor del usuario seleccionado
+
+                if (offenseIds.length === 0) {
+                    showPopup('Por favor, ingresa al menos un ID de ofensa');
+                    return;
+                }
+
+                if (!reasonId) {
+                    showPopup('Por favor, selecciona una razón de cierre');
+                    return;
+                }
+
+                if (!userId) {  // Verificar que se haya seleccionado un usuario
+                    showPopup('Por favor, selecciona un usuario para asignar la ofensa');
+                    return;
+                }
+
+                showConfirmationModal(`¿Estás seguro de que quieres cerrar ${offenseIds.length} ofensas?`, function() {
+                    loadingIndicator.style.display = 'block';
+
+                    const requests = offenseIds.map(offenseId => {
+                        const payload = {
+                            offense_ids: [offenseId], 
+                            reason_id: reasonId,
+                            note: note,
+                            user_id: userId  // Agregar el user_id al payload
+                        };
+
+                        return fetch('/api/close_offense', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        }).then(response => response.json());
+                    });
+
+                    Promise.all(requests)
+                        .then(responses => {
+                            const failedOffenses = [];
+
+                            responses.forEach((data, index) => {
+                                if (data.failed_offenses && data.failed_offenses.length > 0) {
+                                    data.failed_offenses.forEach(offense => {
+                                        failedOffenses.push({
+                                            offense_id: offense.offense_id,
+                                            error: offense.error || "Error desconocido"
+                                        });
+                                    });
+                                }
+                            });
+
+                            if (failedOffenses.length > 0) {
+                                let errorMessage = "Algunas ofensas no se pudieron cerrar:<br><br>";
+
+                                const sortedFailedOffenses = failedOffenses.sort((a, b) => a.offense_id - b.offense_id);
+
+                                sortedFailedOffenses.forEach(offense => {
+                                    let errorText = offense.error;
+                                    if (errorText.includes("Cannot change status of an offense that is already closed")) {
+                                        errorText = "La ofensa ya está cerrada.";
+                                    }
+                                    errorMessage += `${offense.offense_id}: ${errorText}<br>`;
+                                });
+
+                                showPopup(errorMessage);
+                            } else {
+                                showPopup("Todas las ofensas fueron cerradas correctamente.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showPopup("Ocurrió un error al intentar cerrar las ofensas");
+                        })
+                        .finally(() => {
+                            loadingIndicator.style.display = 'none';
+                        });
+                });
+            });
+
+
+
+
+
+
+
+
+            // OCULTAR OFENSAS
+            hideButton.addEventListener('click', function () {
+                const offenseIds = offenseIdsInput.value.split('\n').map(id => id.trim()).filter(id => id);
+                const note = noteInput.value;  
+                if (offenseIds.length === 0) {
+                    showPopup('Por favor, ingresa al menos un ID de ofensa');
+                    return;
+                }
+
+                showConfirmationModal(`¿Estás seguro de que quieres ocultar ${offenseIds.length} ofensas?`, function() {
+                    loadingIndicator.style.display = 'block';
+
+                    const requests = offenseIds.map(offenseId => {
+                        const payload = {
+                            offense_ids: [offenseId], 
+                            note: note  
+                        };
+
+                        return fetch('/api/ocultar_ofensa', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        }).then(response => response.json()); 
+                    });
+
+                    Promise.all(requests)
+                        .then(responses => {
+                            const failedOffenses = [];
+
+                            responses.forEach((data, index) => {
+                                if (data.error) {
+                                    failedOffenses.push({
+                                        offense_id: offenseIds[index],
+                                        error: data.error || "Error desconocido"
+                                    });
+                                }
+                            });
+
+                            if (failedOffenses.length > 0) {
+                                let errorMessage = "Algunas ofensas no se pudieron ocultar:<br><br>";
+
+                                const sortedFailedOffenses = failedOffenses.sort((a, b) => a.offense_id - b.offense_id);
+
+                                sortedFailedOffenses.forEach(offense => {
+                                    let errorText = offense.error;
+                                    errorMessage += `${offense.offense_id}: ${errorText}<br>`;
+                                });
+
+                                showPopup(errorMessage);
+                            } else {
+                                showPopup("Todas las ofensas fueron ocultadas correctamente.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showPopup("Ocurrió un error al intentar ocultar las ofensas");
+                        })
+                        .finally(() => {
+                            loadingIndicator.style.display = 'none';
+                        });
+                });
+            });
+
+
+
+            // AGREGAR NOTA
+            addNoteButton.addEventListener('click', function () {
+                const offenseIds = offenseIdsInput.value.split('\n').map(id => id.trim()).filter(id => id);
+                const note = noteInput.value;
+
+                if (offenseIds.length === 0) {
+                    showPopup('Por favor, ingresa al menos un ID de ofensa');
+                    return;
+                }
+
+                if (!note) {
+                    showPopup('Por favor, ingresa una nota');
+                    return;
+                }
+
+                // Mostrar el modal de confirmación
+                showConfirmationModal(`¿Estás seguro de que quieres agregar una nota a ${offenseIds.length} ofensas?`, function() {
+                    loadingIndicator.style.display = 'block';
+
+                    const requests = offenseIds.map(offenseId => {
+                        const payload = {
+                            offense_ids: [offenseId], 
+                            note: note  
+                        };
+
+                        return fetch('/api/agregar_nota', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        }).then(response => response.json());  
+                    });
+
+                    Promise.all(requests)
+                        .then(responses => {
+                            const failedOffenses = [];
+
+                            responses.forEach((data, index) => {
+                                if (data.error) {
+                                    failedOffenses.push({
+                                        offense_id: offenseIds[index],
+                                        error: data.error || "Error desconocido"
+                                    });
+                                }
+                            });
+
+                            if (failedOffenses.length > 0) {
+                                let errorMessage = "Algunas ofensas no se pudieron actualizar con la nota:<br><br>";
+
+                                const sortedFailedOffenses = failedOffenses.sort((a, b) => a.offense_id - b.offense_id);
+
+                                sortedFailedOffenses.forEach(offense => {
+                                    let errorText = offense.error;
+                                    errorMessage += `${offense.offense_id}: ${errorText}<br>`;
+                                });
+
+                                showPopup(errorMessage);
+                            } else {
+                                showPopup("La nota fue agregada correctamente a todas las ofensas.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showPopup("Ocurrió un error al intentar agregar notas");
+                        })
+                        .finally(() => {
+                            loadingIndicator.style.display = 'none';
+                        });
+                });
+            });
+
+
+
+
+
+            // ASIGNAR OFENSAS
+            // ASIGNAR OFENSAS
+            assignButton.addEventListener('click', function () {
+                const offenseIds = offenseIdsInput.value.split('\n').map(id => id.trim()).filter(id => id);
+                const userId = document.getElementById('userId').value;  
+                const note = noteInput.value;  
+
+                if (offenseIds.length === 0) {
+                    showPopup('Por favor, ingresa al menos un ID de ofensa');
+                    return;
+                }
+
+                if (!userId) {  
+                    showPopup('Por favor, selecciona un usuario para asignar las ofensas');
+                    return;
+                }
+
+   
+                showConfirmationModal(`¿Estás seguro de que quieres asignar ${offenseIds.length} ofensas a ${userId}?`, function() {
+                    loadingIndicator.style.display = 'block';
+
+                    const requests = offenseIds.map(offenseId => {
+                        const payload = {
+                            offense_ids: [offenseId], 
+                            user_id: userId,
+                            note: note
+                        };
+
+                        return fetch('/api/asignar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        }).then(response => response.json());  
+                    });
+
+                    Promise.all(requests)
+                        .then(responses => {
+                            const failedOffenses = [];
+
+                            responses.forEach((data, index) => {
+                                if (data.error) {
+                                    failedOffenses.push({
+                                        offense_id: offenseIds[index],
+                                        error: data.error || "Error desconocido"
+                                    });
+                                }
+                            });
+
+                            if (failedOffenses.length > 0) {
+                                let errorMessage = "Algunas ofensas no se pudieron asignar:<br><br>";
+
+                                const sortedFailedOffenses = failedOffenses.sort((a, b) => a.offense_id - b.offense_id);
+
+                                sortedFailedOffenses.forEach(offense => {
+                                    let errorText = offense.error;
+                                    errorMessage += `${offense.offense_id}: ${errorText}<br>`;
+                                });
+
+                                showPopup(errorMessage);
+                            } else {
+                                showPopup("Todas las ofensas fueron asignadas correctamente.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showPopup("Ocurrió un error al intentar asignar las ofensas");
+                        })
+                        .finally(() => {
+                            loadingIndicator.style.display = 'none';
+                        });
+                });
+            });
+
+
+
+            resetForm('cerrar');
+        });
+    </script>
+</body>
+</html>

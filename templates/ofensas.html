@@ -1,0 +1,241 @@
+<head>
+    <meta charset="UTF-8" />
+    <title>Buscar ofensas</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</head>
+
+<body>
+    <div class="container mt-4">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="{{ url_for('gestion') }}"><h1>Gestión de Ofensas QRadar</h1></a>
+            <div class="navbar-nav ml-auto">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('logout') }}" class="nav-link btn btn-outline-danger">Cerrar sesión</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link btn btn-outline-primary">Iniciar sesión</a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <!-- Regresar botón -->
+        <a href="{{ url_for('gestion') }}" class="text-primary">Regresar</a>
+        <br> <br>
+        <script>
+            window.onload = function() {
+                const today = new Date();
+                const todayFormatted = today.toISOString().split('T')[0];
+
+                // Asignar la fecha de fin (hoy) y la hora de fin (23:59:59)
+                document.getElementById('fecha_fin').value = todayFormatted;
+                document.getElementById('hora_fin').value = "23:59";  // Hora de fin a las 23:59
+
+                today.setDate(today.getDate() - 7); // Fecha de inicio 7 días atrás
+                const startDate = today.toISOString().split('T')[0];
+
+                // Asignar la fecha de inicio (7 días atrás) y la hora de inicio (00:00:00)
+                document.getElementById('fecha_inicio').value = startDate;
+                document.getElementById('hora_inicio').value = "00:00";  // Hora de inicio a las 00:00
+
+                console.log('Fecha inicio:', startDate);
+                console.log('Fecha fin:', todayFormatted);
+            };
+        </script>
+        <!-- Formulario para buscar ofensa -->
+        
+        <form id="formBuscarCodigo" class="w-100" action="{{ url_for('obtener_eventos') }}" method="POST" onsubmit="showButton();">
+            <table >
+                <tbody>
+                    <!-- Fila 1: Código de Ofensa, Fecha de inicio, Hora de inicio -->
+                    <tr>
+                        <td >
+                            <label for="codigo_ofensa">Código de Ofensa:</label>
+                            <input  style="width: 200px;" type="text" id="codigo_ofensa" name="codigo_ofensa" class="form-control" placeholder="Código de ofensa" required />
+                        </td>
+                        <td>
+                            <label for="fecha_inicio">Fecha de inicio:</label>
+                            <input style="width: 200px;" type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" required />
+                        </td>
+                        <td>
+                            <label for="hora_inicio">Hora de inicio:</label>
+                            <input style="width: 100px;" type="time" id="hora_inicio" name="hora_inicio" class="form-control" required />
+                        </td>
+                        <td>
+
+                            <button type="submit" class="btn btn-primary" id="buscarBtn">Buscar Ofensa</button>
+
+                        </td>
+                    </tr>
+
+                    <!-- Fila 2: Fecha de fin, Hora de fin -->
+                    <tr>
+                        <td>
+
+                        </td>
+                        <td>
+                            <label for="fecha_fin">Fecha de fin:</label>
+                            <input style="width: 200px;" type="date" id="fecha_fin" name="fecha_fin" class="form-control" required />
+                        </td>
+                        <td>
+                            <label for="hora_fin">Hora de fin:</label>
+                            <input style="width: 100px;" type="time" id="hora_fin" name="hora_fin" class="form-control" required />
+                        </td>
+                        <td>
+
+                            <button type="button" class="btn btn-success" id="limpiarBtn">Limpiar Búsqueda</button>
+
+                        </td>
+                        <!-- Celda vacía para balancear la tabla -->
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Botones de búsqueda y limpiar -->
+            <div class="d-flex mt-3">
+                
+                
+            </div>
+        </form>
+
+        <!-- Resumen de Origen y Destino -->
+        {% if ofensa %}
+
+        <table class="table table-bordered"  id="ofensesTable">
+            <thead>
+                <tr>
+                    <td><strong>ID Ofensa:</strong> {{ ofensa[0].id }}</td>
+                    <td><strong>Estado:</strong>
+                        <span class="{{ 'estado-abierto' if ofensa[0].status == 'OPEN' else 'estado-cerrado' }}">
+                            {{ ofensa[0].status }}
+                        </span>
+                    </td>
+                    <td><strong>Eventos:</strong> {{ ofensa[0].eventos }}</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="3"><strong>Descripción: </strong>{{ ofensa[0].descripcion }}</td>
+                </tr>
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Resumen de Origen y Destino -->
+            {% if events %}
+                
+            {% endif %}
+        <div class="row mt-4">
+            <div class="col-md-3">
+                {% if events %}
+                    <div class="summary-box">
+                        <p><strong>Origen de eventos:</strong><br>
+                            {% set origen_ips = events | map(attribute='sourceip') | unique %}
+                            {{ origen_ips | join('<br>') | safe }}
+                        </p>
+                        <p><strong>Destino de eventos:</strong><br>
+                            {% set destino_ips = events | map(attribute='destinationip') | unique %}
+                            {{ destino_ips | join('<br>') | safe }}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-9">
+                
+                {% if events %}
+                    <div class="event-scroll-container">
+                        <table class="table table-bordered" id="eventsTable">
+                            <tbody>
+                                {% for event in events %}
+                                    <tr>
+                                        <td>{{ event.payload }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p></p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Obtener el botón de búsqueda
+        const buscarBtn = document.getElementById("buscarBtn");
+
+        document.getElementById("formBuscarCodigo").addEventListener("submit", function () {
+            buscarBtn.disabled = true;  // Deshabilitar el botón
+            buscarBtn.textContent = "Cargando...";  // Cambiar el texto del botón
+        });
+
+        function resetButton() {
+            buscarBtn.disabled = false;  // Habilitar el botón
+            buscarBtn.textContent = "Buscar Ofensa";  // Restaurar el texto del botón
+        }
+
+
+        // Obtener los elementos
+        const modal = document.getElementById("eventsModal");
+        const openModalButton = document.getElementById("openModalButton");
+        const closeModalButton = document.getElementById("closeModalButton");
+        const closeModalButtonFooter = document.getElementById("closeModalButtonFooter");
+        const eventsTable = document.getElementById("eventsTable");
+
+        // Abrir el modal y limpiar su contenido
+        openModalButton.onclick = function () {
+            clearModalContent();  // Limpiar el contenido del modal
+            modal.classList.add("show");  // Mostrar el modal
+        }
+
+        // Cerrar el modal
+        closeModalButton.onclick = function () {
+            modal.classList.remove("show");
+            clearModalContent();  // Limpiar el contenido del modal
+        }
+
+        closeModalButtonFooter.onclick = function () {
+            modal.classList.remove("show");
+            clearModalContent();  // Limpiar el contenido del modal
+        }
+
+        // Limpiar el contenido del modal
+        function clearModalContent() {
+            const tableBody = eventsTable.querySelector("tbody");
+            tableBody.innerHTML = "";  // Limpiar las filas de la tabla
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const limpiarBtn = document.getElementById('limpiarBtn');
+            const eventsTable = document.getElementById('eventsTable');
+            const ofensesTable = document.getElementById('ofensesTable');
+            const resumenEventos = document.querySelector('.summary-box');
+
+            // Añadir evento de click al botón "Limpiar Búsqueda"
+            limpiarBtn.addEventListener('click', function () {
+                // Limpiar la tabla de eventos
+                if (eventsTable) {
+                    eventsTable.querySelector('tbody').innerHTML = '';  // Limpiar las filas de la tabla
+                }
+
+                // Limpiar el resumen de eventos (Origen y Destino)
+                if (resumenEventos) {
+                    resumenEventos.innerHTML = '';  // Limpiar el resumen de IPs
+                }
+
+                                // Limpiar el resumen de eventos (Origen y Destino)
+                if (ofensesTable) {
+                    ofensesTable.innerHTML = '';  // Limpiar el resumen de IPs
+                }
+
+            });
+        });
+    </script>
+</body>
+
+</html>

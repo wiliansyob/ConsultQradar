@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Error</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Error</h1>
+        <p>{{ error_message }}</p>
+        <a href="{{ request.referrer }}">Volver a la página anterior</a>
+    </div>
+
+</body>
+</html>
+
